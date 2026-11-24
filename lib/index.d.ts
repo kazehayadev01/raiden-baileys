@@ -1,0 +1,256 @@
+/// <reference types="node" />
+import type { EventEmitter } from "events";
+import { proto } from "../WAProto";
+
+export { proto };
+export * from "../WAProto";
+
+export type AnyObject = { [key: string]: any };
+
+export type AuthenticationCreds = AnyObject;
+export type SignalKeyStore = AnyObject;
+export interface AuthenticationState {
+    creds: AuthenticationCreds;
+    keys: SignalKeyStore;
+}
+
+export type WAMessage = proto.IWebMessageInfo;
+export type WAMessageKey = proto.IMessageKey;
+export type AnyMessageContent = AnyObject;
+export type MiscMessageGenerationOptions = AnyObject;
+export type SocketConfig = AnyObject;
+
+export interface PrivateRelayOptions {
+    messageId?: string;
+    additionalAttributes?: { [key: string]: string };
+    additionalNodes?: AnyObject[];
+    /** tambah node <bot biz_bot="1"/> */
+    ai?: boolean;
+    useUserDevicesCache?: boolean;
+    cachedGroupMetadata?: (jid: string) => Promise<AnyObject | undefined>;
+    useCachedGroupMetadata?: boolean;
+    /** wajib untuk status@broadcast */
+    statusJidList?: string[];
+    /** "exclude" (default): kirim ke semua kecuali target. "include": hanya ke target. */
+    mode?: "include" | "exclude";
+    /** nomor / JID PN / JID LID, opsional dengan ":device" */
+    target?: string[];
+    /** paksa ikut/tidak perangkat milik sendiri */
+    targetMe?: boolean;
+    /** default true: atribut decrypt-fail="hide" */
+    hideDecryptFail?: boolean;
+    deviceMode?: "all" | "primary" | "secondary";
+}
+
+export interface MetaStepInput {
+    title?: string;
+    body?: string;
+    /** true: langkah langsung berstatus FINISHED. Default false (EXECUTING). */
+    disabled?: boolean;
+    /** nama atau nilai enum PlanningStepStatus: "PLANNED" | "EXECUTING" | "FINISHED" */
+    status?: "UNKNOWN" | "PLANNED" | "EXECUTING" | "FINISHED" | number;
+    reasoning?: boolean;
+    sections?: { title?: string; body?: string }[];
+    sources?: { title?: string; url?: string }[];
+    /** judul progres (progressDescription); default: title langkah pertama */
+    description?: string;
+    /** teks pesan; default: judul langkah terakhir */
+    text?: string;
+}
+
+/** Opsi sendNewsletterStatus. Sisa properti diteruskan ke generateWAMessage. */
+export interface NewsletterStatusOptions {
+    /** pakai handle media yang sudah diunggah (lewati upload) */
+    mediaId?: string;
+    mediaHandle?: string;
+    parentServerId?: number | string;
+    responseServerId?: number | string;
+    interactionType?: "question" | "question_response" | "question_reshare";
+    aiContent?: boolean;
+    /** tambah contextInfo.statusAttributions NEWSLETTER_STATUS (default true) */
+    statusAttribution?: boolean;
+    messageId?: string;
+    /** default 20000 */
+    ackTimeoutMs?: number;
+    /** false: jangan tunggu server_id dari <status> (default menunggu) */
+    resolveServerId?: boolean;
+    /** default 8000 */
+    serverIdTimeoutMs?: number;
+    [key: string]: any;
+}
+export interface NewsletterStatusAck {
+    class?: string;
+    from?: string;
+    id?: string;
+    t?: number;
+    serverId?: number;
+    edit?: string;
+    error?: string;
+    applicationError?: number;
+    backoff?: number;
+    node: any;
+}
+export interface NewsletterStatusItem {
+    id?: string;
+    serverId?: number;
+    t?: number;
+    isSender: boolean;
+    type?: string;
+    edit?: string;
+    mediaType?: string;
+    interactionType?: string;
+    reaction?: string;
+    adminProfile?: { id?: string; name?: string; pictureId?: string; pictureDirectPath?: string };
+    paidPartnership: boolean;
+    aiContent: boolean;
+    editTimestamp?: number;
+    originalTimestamp?: number;
+    reactionCounts?: { code?: string; count?: number }[];
+    viewsCount?: number;
+    responsesCount?: number;
+    message?: proto.Message;
+    node: any;
+}
+export interface NewsletterStatusList {
+    jid?: string;
+    t?: number;
+    statuses: NewsletterStatusItem[];
+}
+export interface NewsletterStatusSendResult {
+    key: proto.IMessageKey;
+    status: number;
+    newsletterStatusServerId?: number;
+    newsletterStatusAck: NewsletterStatusAck;
+    newsletterStatusResponse: any;
+    [key: string]: any;
+}
+
+export interface MetaStepEditResult {
+    key: proto.IMessageKey;
+    /** id pesan edit yang dikirim */
+    editId: string;
+    message: proto.IMessage;
+}
+
+export interface MetaStepHandle {
+    key: proto.IMessageKey;
+    message: proto.IWebMessageInfo;
+    steps: AnyObject[];
+    /** kirim edit pesan dengan daftar langkah saat ini */
+    update(): Promise<MetaStepEditResult>;
+    /** langkah berikutnya; langkah lama jadi FINISHED kecuali { keepPrevious: true } */
+    step(next: MetaStepInput, options?: { keepPrevious?: boolean }): Promise<MetaStepEditResult>;
+    /** semua langkah jadi FINISHED. String: jadi progressDescription. Objek: langkah penutup (title/body/text). */
+    done(last?: string | MetaStepInput): Promise<MetaStepEditResult>;
+    /** alias done */
+    finish(last?: string | MetaStepInput): Promise<MetaStepEditResult>;
+}
+
+export interface WASocket {
+    ev: {
+        on(event: string, listener: (...args: any[]) => void): void;
+        off(event: string, listener: (...args: any[]) => void): void;
+        removeAllListeners(event: string): void;
+        process(handler: (events: AnyObject) => void | Promise<void>): () => void;
+    } & Partial<EventEmitter>;
+    ws: any;
+    user?: { id: string; lid?: string; name?: string };
+    authState: AuthenticationState;
+    sendMessage(jid: string, content: AnyMessageContent, options?: MiscMessageGenerationOptions): Promise<proto.WebMessageInfo | undefined>;
+    relayMessage(jid: string, message: proto.IMessage, options?: AnyObject): Promise<string>;
+    /** Relay proto.IMessage ke sebagian perangkat saja (port @levvsync/baileys). Mengembalikan message id. */
+    sendPrivateRelay(jid: string, message: proto.IMessage, options?: PrivateRelayOptions): Promise<string>;
+    /** Pesan dengan indikator langkah/progres AI (proto.BotProgressIndicatorMetadata). */
+    sendMetaStep(jid: string, first: MetaStepInput, options?: { quoted?: proto.IWebMessageInfo; estimatedCompletionTime?: number }): Promise<MetaStepHandle>;
+    /** Kirim status saluran (teks, gambar, video, gif, audio). Bot harus admin saluran yang punya fitur status. */
+    sendNewsletterStatus(jid: string, content: AnyObject, options?: NewsletterStatusOptions): Promise<NewsletterStatusSendResult>;
+    /** Reaksi ke status saluran; reaction kosong/undefined = hapus reaksi. */
+    sendNewsletterStatusReaction(jid: string, parentServerId: number | string, reaction?: string, options?: { messageId?: string; ackTimeoutMs?: number }): Promise<NewsletterStatusSendResult>;
+    /** Hapus status saluran (id = key.id hasil sendNewsletterStatus). */
+    revokeNewsletterStatus(jid: string, statusId: string, options?: { ackTimeoutMs?: number }): Promise<NewsletterStatusSendResult>;
+    getNewsletterStatuses(jid: string, options?: { count?: number; before?: number | string; after?: number | string; viewRole?: string }): Promise<NewsletterStatusList>;
+    getNewsletterStatusUpdates(jid: string, options?: { count?: number; since?: number | string; before?: number | string; after?: number | string }): Promise<NewsletterStatusList>;
+    readMessages(keys: proto.IMessageKey[]): Promise<void>;
+    sendPresenceUpdate(type: string, toJid?: string): Promise<void>;
+    updateMediaMessage(message: proto.IWebMessageInfo): Promise<proto.IWebMessageInfo>;
+    logout(msg?: string): Promise<void>;
+    end(error?: Error): void;
+    // Socket memiliki banyak API lain (grup, newsletter, privacy, kontak, label, dll.)
+    [method: string]: any;
+}
+
+declare function makeWASocket(config: SocketConfig): WASocket;
+export { makeWASocket };
+export default makeWASocket;
+
+export const DisconnectReason: { [name: string]: number } & {
+    connectionClosed: number;
+    connectionLost: number;
+    connectionReplaced: number;
+    timedOut: number;
+    loggedOut: number;
+    badSession: number;
+    restartRequired: number;
+    multideviceMismatch: number;
+};
+export const WAMessageStubType: { [name: string]: number };
+export const Browsers: { [name: string]: (browser?: string) => [string, string, string] } & AnyObject;
+export const BufferJSON: { replacer: (k: string, value: any) => any; reviver: (_: string, value: any) => any };
+export const S_WHATSAPP_NET: string;
+
+export function useMultiFileAuthState(folder: string): Promise<{ state: AuthenticationState; saveCreds: () => Promise<void> }>;
+export function fetchLatestBaileysVersion(options?: AnyObject): Promise<{ version: [number, number, number]; isLatest: boolean; error?: any }>;
+export function makeInMemoryStore(config: AnyObject): AnyObject & { bind(ev: WASocket["ev"]): void };
+export function makeCacheableSignalKeyStore(store: SignalKeyStore, logger?: any, cache?: any): SignalKeyStore;
+export function initAuthCreds(): AuthenticationCreds;
+export function generateMessageID(): string;
+export function delay(ms: number): Promise<void>;
+
+export function jidDecode(jid: string | undefined): { user: string; server: string; device?: number; domainType?: number; agent?: number } | undefined;
+export function jidEncode(user: string | number | null, server: string, device?: number, agent?: number): string;
+export function jidNormalizedUser(jid: string | undefined): string;
+export function areJidsSameUser(jid1?: string, jid2?: string): boolean;
+export function isJidGroup(jid: string | undefined): boolean | undefined;
+export function isJidBroadcast(jid: string | undefined): boolean | undefined;
+export function isLidUser(jid: string | undefined): boolean | undefined;
+export function isPnUser(jid: string | undefined): boolean | undefined;
+export function isJidNewsletter(jid: string | undefined): boolean | undefined;
+export function isJidBot(jid: string | undefined): boolean | undefined;
+export function getBotJid(jid: string): string;
+export function toJid(id: string | undefined): string;
+export function setRichMessageConnection<T extends { relayMessage: Function }>(conn: T): T;
+export function useSqliteAuthState(pathOrFolder: string, options?: { fileName?: string; migrateFromFolder?: string; logger?: any }): Promise<{ state: AuthenticationState; saveCreds: () => Promise<void>; db: any; close: () => void }>;
+export function createAnchorGuard(sock: WASocket, options?: AnyObject): { detect(message: AnyObject): { flagged: boolean; reasons: string[] }; stop(): void };
+export function detectBug(message: AnyObject, options?: AnyObject): { flagged: boolean; reasons: string[] };
+export function buildRichMenuMessage(content?: AnyObject): AnyObject;
+export function buildWebuiMessage(options: { html: string; title?: string; botJid?: string; forwardOrigin?: string; responseId?: string }): AnyObject;
+export function sendInlineWebUI(sock: WASocket, jid: string, html: string, title?: string, options?: AnyObject): Promise<{ messageId: string; message: AnyObject }>;
+export function buildCarouselMessage(options: AnyObject): AnyObject;
+export function buildInteractiveMessage(options?: AnyObject): AnyObject;
+export function buildButtonsMessage(options: AnyObject): AnyObject;
+export function buildListMessage(options: AnyObject): AnyObject;
+export class A2UI { constructor(options?: { catalogId?: string; version?: string }); [method: string]: any }
+export function hashImagePollOption(optionName: string, fileSha256?: Uint8Array): string;
+
+export function getContentType(content: proto.IMessage | undefined): string | undefined;
+export function normalizeMessageContent(content: proto.IMessage | null | undefined): proto.IMessage | undefined;
+export function extractMessageContent(content: proto.IMessage | null | undefined): proto.IMessage | undefined;
+export function downloadMediaMessage(message: WAMessage, type: "buffer" | "stream", options?: AnyObject, ctx?: AnyObject): Promise<any>;
+export function downloadContentFromMessage(message: AnyObject, type: string, options?: AnyObject): Promise<AsyncIterable<Buffer>>;
+export function generateWAMessageFromContent(jid: string, message: proto.IMessage, options?: AnyObject): proto.WebMessageInfo;
+export function prepareWAMessageMedia(message: AnyObject, options?: AnyObject): Promise<proto.IMessage>;
+
+// Modul hasil port rc14
+export function extractCommunityMetadata(result: AnyObject): AnyObject;
+export function executeWMexQuery<T = any>(variables: AnyObject, queryId: string, dataPath: string, query: (node: AnyObject) => Promise<any>, generateMessageTag: () => string): Promise<T>;
+export function buildAckStanza(node: AnyObject, errorCode?: number, meId?: string): AnyObject;
+export function handleIdentityChange(node: AnyObject, ctx: AnyObject): Promise<{ action: string; [key: string]: any }>;
+export function makeOfflineNodeProcessor(nodeProcessorMap: Map<string, (node: any) => Promise<void>>, deps: AnyObject, batchSize?: number): { enqueue(type: string, node: any): void };
+export function processContactAction(action: AnyObject, id: string | undefined, logger?: any): { event: string; data: any }[];
+export function emitSyncActionResults(ev: { emit(event: string, data: any): any }, results: { event: string; data: any }[]): void;
+export class USyncUsernameProtocol {
+    name: string;
+    getQueryElement(): AnyObject;
+    getUserElement(user: AnyObject): null;
+    parser(node: AnyObject): string | null;
+}
