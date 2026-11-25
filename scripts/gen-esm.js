@@ -20,7 +20,7 @@ if (bad.length) {
     process.exit(1)
 }
 
-const out = `// Wrapper ESM untuk raiden-baileys (dual package CJS + ESM).
+const out = `// Wrapper ESM untuk @kaze012/raiden-baileys (dual package CJS + ESM).
 // File ini DIBUAT OTOMATIS oleh scripts/gen-esm.js - jangan diedit manual.
 // Kode asli tetap CommonJS (lib/index.js); wrapper ini hanya memuatnya via
 // createRequire sehingga hanya ada SATU instance modul (tidak ada dual-package hazard).

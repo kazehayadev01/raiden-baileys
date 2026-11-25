@@ -1,6 +1,6 @@
 {
     "name": "@kaze012/raiden-baileys",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Raiden-Baileys, baileys modifikasi by kaze",
     "keywords": [
         "whatsapp",
@@ -13,7 +13,7 @@
     "license": "MIT",
     "author": "Kaze, Kelvin, Tayro (https://instagram.com/qwerty267_)",
     "contributors": [
-        "Kaze (https://github.com/FathulGans)",
+        "Kaze (https://github.com/kazehayadev01)",
         "Kelvin (https://github.com/vfmarket24-alt)",
         "Tayro"
     ],
@@ -133,6 +133,6 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/FathulGans/Raiden-Baileys.git"
+        "url": "git+https://github.com/kazehayadev01/raiden-baileys.git"
     }
 }
